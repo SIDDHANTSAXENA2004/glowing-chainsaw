@@ -213,6 +213,207 @@ END {
 
 # 5. Run the Throughput AWK script:
 #    awk -f throughput.awk even.tr
+
+
+
+
+
+
+
+//threading server
+from socket import *
+import threading
+
+serverPort = 12000
+serverSocket = socket(AF_INET, SOCK_STREAM)
+serverSocket.bind(("", serverPort))
+serverSocket.listen(5)
+
+print("Server is ready...")
+
+clients = []
+
+# Function to handle each client
+def handle_client(connectionSocket, addr):
+    print(f"New connection from {addr}")
+    clients.append(connectionSocket)
+
+    while True:
+        try:
+            message = connectionSocket.recv(1024).decode()
+            if not message:
+                break
+
+            print(f"{addr}: {message}")
+
+            # Broadcast message to all clients
+            for client in clients:
+                if client != connectionSocket:
+                    client.send(f"{addr}: {message}".encode())
+
+        except:
+            break
+
+    print(f"Connection closed: {addr}")
+    clients.remove(connectionSocket)
+    connectionSocket.close()
+
+
+# Accept multiple clients
+while True:
+    connectionSocket, addr = serverSocket.accept()
+    thread = threading.Thread(target=handle_client, args=(connectionSocket, addr))
+    thread.start()
+
+
+
+//client
+from socket import *
+import threading
+
+serverName = 'localhost'
+serverPort = 12000
+
+clientSocket = socket(AF_INET, SOCK_STREAM)
+clientSocket.connect((serverName, serverPort))
+
+print("Connected to chat server...")
+
+# Receive messages from server
+def receive_messages():
+    while True:
+        try:
+            message = clientSocket.recv(1024).decode()
+            print("\n" + message)
+        except:
+            break
+
+# Start receiving thread
+thread = threading.Thread(target=receive_messages)
+thread.start()
+
+# Send messages
+while True:
+    msg = input()
+    clientSocket.send(msg.encode())
+
+
+
+
+
+
+
+
+
+//serverudp
+from socket import *
+import time
+
+
+serverSocket = socket(AF_INET, SOCK_DGRAM)
+
+serverPort = 13000
+
+serverSocket.bind(("", serverPort))
+
+print("UDP Server is ready...")
+
+while True:
+    # Receive request
+    message, clientAddress = serverSocket.recvfrom(1024)
+    print("Request received from:", clientAddress)
+
+    
+    current_time = time.ctime(time.time())
+
+    
+    serverSocket.sendto(current_time.encode(), clientAddress)
+
+
+//client
+from socket import *
+
+clientSocket = socket(AF_INET, SOCK_DGRAM)
+
+serverName = 'localhost'
+serverPort = 13000
+
+message = "Give me time"
+clientSocket.sendto(message.encode(), (serverName, serverPort))
+
+modifiedMessage, serverAddress = clientSocket.recvfrom(1024)
+
+print("Current Time:", modifiedMessage.decode())
+
+clientSocket.close()
+
+
+
+
+
+
+
+
+//server
+
+from socket import *
+
+
+serverSocket = socket(AF_INET, SOCK_STREAM)
+
+serverPort = 12000
+
+serverSocket.bind(("", serverPort))
+
+serverSocket.listen(1)
+
+print("Server is ready...")
+
+while True:
+    print("Waiting for connection...")
+    connectionSocket, addr = serverSocket.accept()
+
+    try:
+        message = connectionSocket.recv(1024).decode()
+        print("Received IP:", message)
+
+     
+        try:
+            hostname = gethostbyaddr(message)[0]
+        except:
+            hostname = "Hostname not found"
+
+        
+        connectionSocket.send(hostname.encode())
+
+        connectionSocket.close()
+
+    except Exception as e:
+        print("Error:", e)
+        connectionSocket.close()
+
+
+
+//client
+from socket import *
+
+clientSocket = socket(AF_INET, SOCK_STREAM)
+
+serverName = 'localhost'
+serverPort = 12000
+
+clientSocket.connect((serverName, serverPort))
+
+ip = input("Enter IP address: ")
+
+clientSocket.send(ip.encode())
+
+hostname = clientSocket.recv(1024).decode()
+
+print("Hostname is:", hostname)
+
+clientSocket.close()
+
 `;
 
 app.get('/', (req, res) => {
