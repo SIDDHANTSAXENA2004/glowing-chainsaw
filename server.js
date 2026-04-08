@@ -159,6 +159,23 @@ END {
         print "Throughput (bps): 0";
     }
 }
+# ---------------------------------------------------------
+# Running File Tricks (Terminal Commands)
+# ---------------------------------------------------------
+# 1. Run the TCL simulation:
+#    ns assign8.tcl
+
+# 2. Run the Delay AWK script:
+#    awk -f delay.awk even.tr > delay.txt
+
+# 3. View the graph for delay:
+#    xgraph delay.txt
+
+# 4. Run the Stats AWK script:
+#    awk -f stats.awk even.tr
+
+# 5. Run the Throughput AWK script:
+#    awk -f throughput.awk even.tr
 `;
 
 app.get('/', (req, res) => {
