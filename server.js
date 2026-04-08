@@ -4,7 +4,7 @@ const port = process.env.PORT || 3000;
 
 const scripts = `
 # ---------------------------------------------------------
-# assign8.tcl
+# ques.tcl
 # ---------------------------------------------------------
 # Create Simulator
 set ns [new Simulator]
@@ -89,7 +89,44 @@ $ns at 6.5 "finish"
 # Run
 $ns run
 
-
+#cbr
+PacketSize_: constant size of packets generated e.g 48
+rate_: sending rate e.g. 64kb
+interval_: (optional) interval time between packets e.g 0.05
+random_: Flag to introduce noise in the departure times; default is off, 1 for on
+maxpkts_: the maximum number of packets to send e.g 1000
+#exponential
+set my_exp [new Application/Traffic/Exponential]
+PacketSize_: constant size of packets generated e.g 210
+burst_time_: average on time for the generator e.g. 500ms
+idle_time_: average off time for the generator e.g 500ms
+rate_: sending rate during the “on” time e.g. 100k
+#pareto
+set my_pareto [new Application/Traffic/Pareto]
+PacketSize_: constant size of packets generated e.g. 210
+burst_time_: average on time for the generator e.g. 500ms
+idle_time_: average off time for the generator e.g. 500ms
+rate_: sending rate during the “on” time e.g. 100k
+shape_: the shape parameter used by the pareto distribution e.g. 1.5
+#traffic trace
+set t_file [new Tracefile]
+$t_file filename <file>
+set src [ new Application/Traffic/Trace]
+$src attach-tracefile $t_file
+#ftp
+attach-agent: attach-agent: attaches an Application/FTP agent to an agent
+start: start the Application/FTP to send data
+stop: stop sending data
+produce n: where n is the counter of packets to be sent
+producemore n: where n is the new increased value of packets to be sent
+send n: similar to producemore, but sends n bytes instead of packets
+#telnet
+set telnet [new Application/Telnet]
+$telnet attach-agent $tcp
+Parameters
+start: start producing packets
+stop: stop producing packets
+attach-agent: attaches a Telnet object to an agent
 # ---------------------------------------------------------
 # delay.awk
 # ---------------------------------------------------------
@@ -163,7 +200,7 @@ END {
 # Running File Tricks (Terminal Commands)
 # ---------------------------------------------------------
 # 1. Run the TCL simulation:
-#    ns assign8.tcl
+#    ns ques.tcl
 
 # 2. Run the Delay AWK script:
 #    awk -f delay.awk even.tr > delay.txt
