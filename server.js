@@ -76,6 +76,8 @@ $cbr attach-agent $udp
 $cbr set packetSize_ 1000
 $cbr set interval_ 0.005
 
+
+
 # Start/Stop
 $ns at 0.5 "$ftp start"
 $ns at 1.0 "$cbr start"
@@ -196,6 +198,38 @@ END {
         print "Throughput (bps): 0";
     }
 }
+
+#average.awk
+BEGIN {
+        highest_packet_id=0;
+}
+
+{
+        action = $1; time = $2; from = $3; to = $4; type = $5; pktsize = $6; flow_id = $8; src = $9;dst = $10; seq_no = $11; packet_id = $12;
+        if ( packet_id > highest_packet_id )
+                highest_packet_id = packet_id;
+        if ( start_time[packet_id] == 0 )
+                start_time[packet_id] = time;
+        if( action == "r" ) {
+                end_time[packet_id] = time;
+        } else {
+                end_time[packet_id] = -1;
+        }
+}
+
+END {
+
+        for(packet_id=0; packet_id < highest_packet_id; packet_id++)
+        {
+                start = start_time[packet_id];
+                end =end_time[packet_id];
+                packet_duration = end-start;
+                if( start < end )
+                        printf("%f %f\n",start, packet_duration);
+        }
+}
+
+
 # ---------------------------------------------------------
 # Running File Tricks (Terminal Commands)
 # ---------------------------------------------------------
@@ -213,8 +247,6 @@ END {
 
 # 5. Run the Throughput AWK script:
 #    awk -f throughput.awk even.tr
-
-
 
 
 
@@ -267,7 +299,7 @@ while True:
 
 
 
-//client
+//client threading
 from socket import *
 import threading
 
@@ -301,11 +333,7 @@ while True:
 
 
 
-
-
-
-
-//serverudp
+//server udp
 from socket import *
 import time
 
@@ -330,7 +358,7 @@ while True:
     serverSocket.sendto(current_time.encode(), clientAddress)
 
 
-//client
+//client udp
 from socket import *
 
 clientSocket = socket(AF_INET, SOCK_DGRAM)
@@ -351,10 +379,7 @@ clientSocket.close()
 
 
 
-
-
-
-//server
+//server tcp
 
 from socket import *
 
@@ -394,7 +419,7 @@ while True:
 
 
 
-//client
+//client tcp
 from socket import *
 
 clientSocket = socket(AF_INET, SOCK_STREAM)
