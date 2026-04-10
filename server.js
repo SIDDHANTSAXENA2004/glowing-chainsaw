@@ -129,6 +129,87 @@ Parameters
 start: start producing packets
 stop: stop producing packets
 attach-agent: attaches a Telnet object to an agent
+
+
+
+# Step0: Create Simulator
+set ns [new Simulator]
+
+# Trace files
+set tr [open out.tr w]
+$ns trace-all $tr
+
+set nam [open out.nam w]
+$ns namtrace-all $nam
+
+# Step1: Create Nodes
+set n0 [$ns node]
+set n1 [$ns node]
+set n2 [$ns node]
+set n3 [$ns node]
+
+# Links
+$ns duplex-link $n0 $n2 1Mb 10ms DropTail
+$ns duplex-link $n1 $n2 1Mb 10ms DropTail
+$ns duplex-link $n2 $n3 500Kb 20ms DropTail  ;# bottleneck
+
+# Step2: Agents
+
+# UDP (CBR)
+set udp [new Agent/UDP]
+$ns attach-agent $n0 $udp
+
+set null [new Agent/Null]
+$ns attach-agent $n3 $null
+
+$ns connect $udp $null
+$udp set fid_ 0
+
+# TCP (FTP)
+set tcp [new Agent/TCP]
+$ns attach-agent $n1 $tcp
+
+set sink [new Agent/TCPSink]
+$ns attach-agent $n3 $sink
+
+$ns connect $tcp $sink
+$tcp set fid_ 1
+
+# Step3: Applications
+
+# CBR over UDP
+set cbr [new Application/Traffic/CBR]
+$cbr attach-agent $udp
+$cbr set rate_ 200Kb
+$cbr set packetSize_ 512
+
+# FTP over TCP
+set ftp [new Application/FTP]
+$ftp attach-agent $tcp
+
+# Step4: Scheduling
+$ns at 1.0 "$cbr start"
+$ns at 1.5 "$ftp start"
+$ns at 4.0 "$ftp stop"
+$ns at 4.5 "$cbr stop"
+
+# Finish procedure
+proc finish {} {
+    global ns tr nam
+    $ns flush-trace
+    close $tr
+    close $nam
+    exec nam out.nam &
+    exit 0
+}
+
+$ns at 5.0 "finish"
+
+# Run simulation
+$ns run
+
+
+
 # ---------------------------------------------------------
 # delay.awk
 # ---------------------------------------------------------
@@ -252,7 +333,7 @@ END {
 
 
 
-//threading server
+#threading server
 from socket import *
 import threading
 
@@ -299,7 +380,7 @@ while True:
 
 
 
-//client threading
+#client threading
 from socket import *
 import threading
 
@@ -333,7 +414,7 @@ while True:
 
 
 
-//server udp
+#server udp
 from socket import *
 import time
 
@@ -358,7 +439,7 @@ while True:
     serverSocket.sendto(current_time.encode(), clientAddress)
 
 
-//client udp
+#client udp
 from socket import *
 
 clientSocket = socket(AF_INET, SOCK_DGRAM)
@@ -379,7 +460,7 @@ clientSocket.close()
 
 
 
-//server tcp
+#server tcp
 
 from socket import *
 
@@ -419,7 +500,7 @@ while True:
 
 
 
-//client tcp
+#client tcp
 from socket import *
 
 clientSocket = socket(AF_INET, SOCK_STREAM)
