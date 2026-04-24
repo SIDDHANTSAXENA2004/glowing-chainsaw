@@ -3,6 +3,146 @@ const app = express();
 const port = process.env.PORT || 3000;
 
 const scripts = `
+PYQ
+
+# Create simulator
+set ns [new Simulator]
+
+# Trace files
+set tf [open out.tr w]
+$ns trace-all $tf
+
+set nf [open out.nam w]
+$ns namtrace-all $nf
+
+# Create nodes
+set s1 [$ns node]   ;# Source1
+set s2 [$ns node]   ;# Source2
+set r1 [$ns node]   ;# R1
+set r2 [$ns node]   ;# R2
+set r3 [$ns node]   ;# R3
+set d  [$ns node]   ;# Sink
+
+# Links (as per diagram)
+$ns duplex-link $s1 $r1 1Mb 100ms DropTail
+$ns duplex-link $s2 $r1 1Mb 100ms DropTail
+
+$ns duplex-link $r1 $r2 2.5Mb 40ms DropTail
+$ns duplex-link $r2 $d  2.5Mb 40ms DropTail
+
+$ns duplex-link $r1 $r3 0.5Mb 100ms DropTail
+$ns duplex-link $r3 $d  0.5Mb 100ms DropTail
+
+# Queue limits
+$ns queue-limit $s1 $r1 10
+$ns queue-limit $s2 $r1 10
+$ns queue-limit $r1 $r2 10
+$ns queue-limit $r2 $d 10
+$ns queue-limit $r1 $r3 10
+$ns queue-limit $r3 $d 10
+
+# TCP Agents
+set tcp1 [new Agent/TCP]
+set tcp2 [new Agent/TCP]
+
+# Sinks
+set sink1 [new Agent/TCPSink]
+set sink2 [new Agent/TCPSink]
+
+# Attach agents
+$ns attach-agent $s1 $tcp1
+$ns attach-agent $s2 $tcp2
+$ns attach-agent $d $sink1
+$ns attach-agent $d $sink2
+
+# Connect flows
+$ns connect $tcp1 $sink1
+$ns connect $tcp2 $sink2
+
+# Set flow IDs (important)
+$tcp1 set fid_ 1
+$tcp2 set fid_ 2
+
+# Set colors (for NAM)
+$ns color 1 Blue
+$ns color 2 Red
+
+# FTP Applications
+set ftp1 [new Application/FTP]
+$ftp1 attach-agent $tcp1
+
+set ftp2 [new Application/FTP]
+$ftp2 attach-agent $tcp2
+
+# Start/Stop times
+$ns at 1.0 "$ftp1 start"
+$ns at 19.0 "$ftp1 stop"
+
+$ns at 1.1 "$ftp2 start"
+$ns at 19.1 "$ftp2 stop"
+
+# Link failure (R1-R2 at 5 sec)
+$ns rtmodel-at 5.0 down $r1 $r2
+
+# Finish at 20 sec
+$ns at 20.0 "finish"
+
+# Finish procedure
+proc finish {} {
+    global ns tf nf
+    $ns flush-trace
+    close $tf
+    close $nf
+    exec nam out.nam &
+    exit 0
+}
+
+# Run
+$ns run
+
+
+#AWK
+BEGIN {
+    r2_packets = 0;
+    r3_packets = 0;
+    sink_packets = 0;
+    total_bytes = 0;
+}
+
+{
+    event = $1;
+    time  = $2;
+    from  = $3;
+    to    = $4;
+    size  = $6;
+
+    # Count packets through R2 (node id 3 typically)
+    if (event == "r" && to == 3) {
+        r2_packets++;
+    }
+
+    # Count packets through R3 (node id 4 typically)
+    if (event == "r" && to == 4) {
+        r3_packets++;
+    }
+
+    # Packets received at sink (node id 5)
+    if (event == "r" && to == 5) {
+        sink_packets++;
+        total_bytes += size;
+    }
+}
+
+END {
+    sim_time = 20;  # given in question
+    throughput = (total_bytes * 8) / sim_time;
+
+    print "Packets via R2:", r2_packets;
+    print "Packets via R3:", r3_packets;
+    print "Packets received at Sink:", sink_packets;
+    print "Total Throughput (bps):", throughput;
+}
+    
 # ---------------------------------------------------------
 # ques.tcl
 # ---------------------------------------------------------
