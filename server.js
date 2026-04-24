@@ -142,9 +142,150 @@ END {
     print "Packets received at Sink:", sink_packets;
     print "Total Throughput (bps):", throughput;
 }
-    
+
+
+#pyq2
+
+# Create simulator
+set ns [new Simulator]
+
+# Trace files
+set tf [open out.tr w]
+$ns trace-all $tf
+
+set nf [open out.nam w]
+$ns namtrace-all $nf
+
+# Create nodes
+set s1 [$ns node]   ;# Source1
+set s2 [$ns node]   ;# Source2
+set r1 [$ns node]   ;# R1
+set r2 [$ns node]   ;# R2
+set r3 [$ns node]   ;# R3
+set d  [$ns node]   ;# Sink
+
+# Links (same as diagram)
+$ns duplex-link $s1 $r1 1Mb 100ms DropTail
+$ns duplex-link $s2 $r1 1Mb 100ms DropTail
+
+$ns duplex-link $r1 $r2 2.5Mb 40ms DropTail
+$ns duplex-link $r2 $d  2.5Mb 40ms DropTail
+
+$ns duplex-link $r1 $r3 0.5Mb 100ms DropTail
+$ns duplex-link $r3 $d  0.5Mb 100ms DropTail
+
+# Queue limits
+$ns queue-limit $s1 $r1 10
+$ns queue-limit $s2 $r1 10
+$ns queue-limit $r1 $r2 10
+$ns queue-limit $r2 $d 10
+$ns queue-limit $r1 $r3 10
+$ns queue-limit $r3 $d 10
+
+# UDP Agents
+set udp1 [new Agent/UDP]
+set udp2 [new Agent/UDP]
+
+# Null sinks
+set null1 [new Agent/Null]
+set null2 [new Agent/Null]
+
+# Attach agents
+$ns attach-agent $s1 $udp1
+$ns attach-agent $s2 $udp2
+$ns attach-agent $d $null1
+$ns attach-agent $d $null2
+
+# Connect flows
+$ns connect $udp1 $null1
+$ns connect $udp2 $null2
+
+# Flow IDs (important)
+$udp1 set fid_ 1
+$udp2 set fid_ 2
+
+# Colors
+$ns color 1 Blue
+$ns color 2 Red
+
+# CBR traffic (IMPORTANT PARAMETERS)
+set cbr1 [new Application/Traffic/CBR]
+$cbr1 attach-agent $udp1
+$cbr1 set packetSize_ 100000      ;# 100KB
+$cbr1 set rate_ 500k              ;# 5 packets/sec × 100KB ≈ 500 kbps
+
+set cbr2 [new Application/Traffic/CBR]
+$cbr2 attach-agent $udp2
+$cbr2 set packetSize_ 100000
+$cbr2 set rate_ 500k
+
+# Start/Stop times
+$ns at 1.0 "$cbr1 start"
+$ns at 19.0 "$cbr1 stop"
+
+$ns at 1.1 "$cbr2 start"
+$ns at 19.1 "$cbr2 stop"
+
+# Link failure
+$ns rtmodel-at 5.0 down $r1 $r2
+
+# End simulation
+$ns at 20.0 "finish"
+
+# Finish procedure
+proc finish {} {
+    global ns tf nf
+    $ns flush-trace
+    close $tf
+    close $nf
+    exec nam out.nam &
+    exit 0
+}
+
+# Run
+$ns run
+
+#awk
+
+BEGIN {
+    sent = 0;
+    received = 0;
+    dropped = 0;
+}
+
+{
+    event = $1;
+    from  = $3;
+    to    = $4;
+
+    # Count packets sent (from sources 0 and 1)
+    if (event == "+" && (from == 0 || from == 1)) {
+        sent++;
+    }
+
+    # Count packets received at sink (node 5)
+    if (event == "r" && to == 5) {
+        received++;
+    }
+
+    # Count dropped packets
+    if (event == "d") {
+        dropped++;
+    }
+}
+
+END {
+    pdr = received / sent;
+
+    print "Packets Sent:", sent;
+    print "Packets Received:", received;
+    print "Packets Dropped:", dropped;
+    print "Packet Delivery Ratio (PDR):", pdr;
+}
+
+
 # ---------------------------------------------------------
-# ques.tcl
+# ques.tcl  template
 # ---------------------------------------------------------
 # Create Simulator
 set ns [new Simulator]
@@ -228,166 +369,6 @@ $ns at 6.0 "$cbr stop"
 $ns at 6.5 "finish"
 
 # Run
-$ns run
-
-#---------------------------------------------
-
-# Step0: Create Simulator
-set ns [new Simulator]
-
-# Trace files
-set tr [open out.tr w]
-$ns trace-all $tr
-
-set nam [open out.nam w]
-$ns namtrace-all $nam
-
-# Step1: Create Nodes
-set n0 [$ns node]
-set n1 [$ns node]
-set n2 [$ns node]
-set n3 [$ns node]
-
-# Links
-$ns duplex-link $n0 $n2 1Mb 10ms DropTail
-$ns duplex-link $n1 $n2 1Mb 10ms DropTail
-$ns duplex-link $n2 $n3 500Kb 20ms DropTail  ;# bottleneck
-
-# Step2: Agents
-
-# UDP (CBR)
-set udp [new Agent/UDP]
-$ns attach-agent $n0 $udp
-
-set null [new Agent/Null]
-$ns attach-agent $n3 $null
-
-$ns connect $udp $null
-$udp set fid_ 0
-
-# TCP (FTP)
-set tcp [new Agent/TCP]
-$ns attach-agent $n1 $tcp
-
-set sink [new Agent/TCPSink]
-$ns attach-agent $n3 $sink
-
-$ns connect $tcp $sink
-$tcp set fid_ 1
-
-# Step3: Applications
-
-# CBR over UDP
-set cbr [new Application/Traffic/CBR]
-$cbr attach-agent $udp
-$cbr set rate_ 200Kb
-$cbr set packetSize_ 512
-
-# FTP over TCP
-set ftp [new Application/FTP]
-$ftp attach-agent $tcp
-
-# Step4: Scheduling
-$ns at 1.0 "$cbr start"
-$ns at 1.5 "$ftp start"
-$ns at 4.0 "$ftp stop"
-$ns at 4.5 "$cbr stop"
-
-# Finish procedure
-proc finish {} {
-    global ns tr nam
-    $ns flush-trace
-    close $tr
-    close $nam
-    exec nam out.nam &
-    exit 0
-}
-
-$ns at 5.0 "finish"
-
-# Run simulation
-$ns run
-
-#--------------------------------------------------------
-
-set ns [new Simulator]
-
-set nf [open even.nam w]
-$ns namtrace-all $nf
-
-set nt [open even.tr w]
-$ns trace-all $nt
-
-# Nodes
-set n0 [$ns node]
-set n1 [$ns node]
-set n2 [$ns node]
-set n3 [$ns node]
-set n4 [$ns node]
-set n5 [$ns node]
-
-# Links
-$ns duplex-link $n0 $n1 2Mb 15ms DropTail
-$ns duplex-link $n1 $n2 2Mb 15ms DropTail
-$ns duplex-link $n2 $n3 2Mb 15ms DropTail
-$ns duplex-link $n3 $n5 2Mb 15ms DropTail
-$ns duplex-link $n2 $n5 2Mb 15ms DropTail
-$ns duplex-link $n4 $n5 2Mb 15ms DropTail
-
-# CBR (N0 → N4)
-set udp0 [new Agent/UDP]
-$ns attach-agent $n0 $udp0
-
-set null0 [new Agent/Null]
-$ns attach-agent $n4 $null0
-
-$ns connect $udp0 $null0
-
-set cbr0 [new Application/Traffic/CBR]
-$cbr0 attach-agent $udp0
-$cbr0 set interval_ 0.005
-
-# FTP (N1 → N4)
-set tcp1 [new Agent/TCP]
-$ns attach-agent $n1 $tcp1
-
-set sink1 [new Agent/TCPSink]
-$ns attach-agent $n4 $sink1
-
-$ns connect $tcp1 $sink1
-
-set ftp1 [new Application/FTP]
-$ftp1 attach-agent $tcp1
-
-# CBR (N2 → N4)
-set udp2 [new Agent/UDP]
-$ns attach-agent $n2 $udp2
-
-set null2 [new Agent/Null]
-$ns attach-agent $n4 $null2
-
-$ns connect $udp2 $null2
-
-set cbr2 [new Application/Traffic/CBR]
-$cbr2 attach-agent $udp2
-$cbr2 set interval_ 0.005
-
-# Timing
-$ns at 1.0 "$cbr0 start"
-$ns at 1.5 "$ftp1 start"
-$ns at 2.0 "$cbr2 start"
-
-$ns at 6.0 "finish"
-
-proc finish {} {
-    global ns nf nt
-    $ns flush-trace
-    close $nf
-    close $nt
-    exec nam even.nam &
-    exit 0
-}
-
 $ns run
 
 
