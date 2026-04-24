@@ -371,8 +371,7 @@ END {
 #    awk -f throughput.awk even.tr
 
 
-#------------------------------
--------------------------------------------------
+#----------------------------------------------------------
 #cbr
 PacketSize_: constant size of packets generated e.g 48
 rate_: sending rate e.g. 64kb
@@ -411,6 +410,7 @@ Parameters
 start: start producing packets
 stop: stop producing packets
 attach-agent: attaches a Telnet object to an agent
+
 #------------------------------------------------------------
 
 
@@ -470,6 +470,28 @@ void loop() {
   delay(200);
 }
 
+---------------------------------------------
+
+
+ int arr[]={13,12,11,10,9};
+void setup()
+{
+  for(auto i:arr){pinMode(i, OUTPUT);}
+
+
+}
+
+void loop()
+{
+int animationSpeed = 100;
+ 
+  for(auto i:arr){
+    digitalWrite(i, HIGH);
+delay(animationSpeed); 
+digitalWrite(i, LOW);
+delay(animationSpeed);
+  }
+}
 
 `;
 
