@@ -3,7 +3,10 @@ const app = express();
 const port = process.env.PORT || 3000;
 
 const scripts = `
-PYQ
+
+#-----------------------------
+#PYQ
+#------------------------------
 
 # Create simulator
 set ns [new Simulator]
@@ -100,8 +103,10 @@ proc finish {} {
 # Run
 $ns run
 
-
+#---------------------------
 #AWK
+#---------------------------
+
 BEGIN {
     r2_packets = 0;
     r3_packets = 0;
@@ -143,8 +148,9 @@ END {
     print "Total Throughput (bps):", throughput;
 }
 
-
+#---------------------------
 #pyq2
+#---------------------------
 
 # Create simulator
 set ns [new Simulator]
@@ -245,7 +251,9 @@ proc finish {} {
 # Run
 $ns run
 
+#---------------------------
 #awk
+#---------------------------
 
 BEGIN {
     sent = 0;
